@@ -1,10 +1,17 @@
+import "dotenv/config";
 import type { HardhatUserConfig } from "hardhat/config";
 
 import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
-import { configVariable } from "hardhat/config";
+import hardhatVerify from "@nomicfoundation/hardhat-verify";
+
+const baseSepoliaRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org";
+const baseMainnetRpcUrl = process.env.BASE_MAINNET_RPC_URL ?? "https://mainnet.base.org";
+const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY;
+
+const accounts = deployerPrivateKey ? [deployerPrivateKey] : [];
 
 const config: HardhatUserConfig = {
-  plugins: [hardhatToolboxMochaEthersPlugin],
+  plugins: [hardhatToolboxMochaEthersPlugin, hardhatVerify],
   solidity: {
     profiles: {
       default: {
@@ -38,11 +45,24 @@ const config: HardhatUserConfig = {
       type: "edr-simulated",
       chainType: "op",
     },
-    sepolia: {
+    baseSepolia: {
       type: "http",
-      chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+      chainType: "op",
+      url: baseSepoliaRpcUrl,
+      chainId: 84532,
+      accounts,
+    },
+    baseMainnet: {
+      type: "http",
+      chainType: "op",
+      url: baseMainnetRpcUrl,
+      chainId: 8453,
+      accounts,
+    },
+  },
+  verify: {
+    etherscan: {
+      apiKey: process.env.BASESCAN_API_KEY ?? "",
     },
   },
 };

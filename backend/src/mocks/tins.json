@@ -1,0 +1,44 @@
+{
+  "individual": [
+    {
+      "tin": "NG-TIN-100001",
+      "label": "John Doe",
+      "linkedIdentifier": "22515263226"
+    },
+    {
+      "tin": "NG-TIN-100002",
+      "label": "Amina Bello",
+      "linkedIdentifier": "33477198210"
+    },
+    {
+      "tin": "NG-TIN-100003",
+      "label": "Chinedu Okafor",
+      "linkedIdentifier": "44190532764"
+    },
+    {
+      "tin": "NG-TIN-100004",
+      "label": "Demo Individual"
+    }
+  ],
+  "business": [
+    {
+      "tin": "NG-BIZ-200001",
+      "label": "Ade & Sons Global World",
+      "linkedIdentifier": "123453"
+    },
+    {
+      "tin": "NG-BIZ-200002",
+      "label": "Bello Agro Ventures",
+      "linkedIdentifier": "223344"
+    },
+    {
+      "tin": "NG-BIZ-200003",
+      "label": "Okafor Logistics Limited",
+      "linkedIdentifier": "778899"
+    },
+    {
+      "tin": "NG-BIZ-200004",
+      "label": "Demo Business"
+    }
+  ]
+}

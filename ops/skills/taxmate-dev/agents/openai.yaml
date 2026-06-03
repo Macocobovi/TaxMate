@@ -1,0 +1,5 @@
+version: 1
+interface:
+  display_name: Taxmate Dev
+  short_description: Build and maintain Taxmate fullstack with Express, Drizzle/Postgres, Circle, Monnify, and template-locked frontend.
+  default_prompt: Implement Taxmate features with the project template as visual source of truth, using Express TypeScript backend with PostgreSQL via Drizzle, and update llm.md after progress.

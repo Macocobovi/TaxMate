@@ -1,0 +1,180 @@
+{
+  "individualByNin": {
+    "22515263226": {
+      "status": "success",
+      "data": {
+        "nin": "22515263226",
+        "firstname": "JOHN",
+        "lastname": "DOE",
+        "middlename": "JAMES",
+        "birthdate": "31-05-2000",
+        "gender": "Male",
+        "phone": "08100000000",
+        "photo": "<base64 image>"
+      }
+    },
+    "33477198210": {
+      "status": "success",
+      "data": {
+        "nin": "33477198210",
+        "firstname": "AMINA",
+        "lastname": "BELLO",
+        "middlename": "ZAINAB",
+        "birthdate": "12-09-1995",
+        "gender": "Female",
+        "phone": "08111111111",
+        "photo": "<base64 image>"
+      }
+    },
+    "44190532764": {
+      "status": "success",
+      "data": {
+        "nin": "44190532764",
+        "firstname": "CHINEDU",
+        "lastname": "OKAFOR",
+        "middlename": "EMEKA",
+        "birthdate": "04-02-1991",
+        "gender": "Male",
+        "phone": "08122222222",
+        "photo": "<base64 image>"
+      }
+    }
+  },
+  "businessByRc": {
+    "123453": {
+      "status": "success",
+      "data": {
+        "id": 1,
+        "applicant": {
+          "firstname": "John",
+          "lastname": "Doe",
+          "phone": "08000000000",
+          "idType": "bvn",
+          "idNumber": "10000000001",
+          "middlename": "Cameron",
+          "photo": "https://images.verifyme.ng/278783775/fjjjjler7834.jpg",
+          "gender": "Male",
+          "birthdate": "17/01/1988"
+        },
+        "business": {
+          "name": "Ade & Sons Global World",
+          "type": "Formal",
+          "rcNumber": "123453",
+          "isBusinessKnown": true,
+          "isBusinessOwnerKnown": true,
+          "ownerVisitsFrequently": false
+        },
+        "canContactPoc": false,
+        "createdAt": "",
+        "completedAt": "",
+        "lattitude": "9.081999",
+        "longitude": "8.675277",
+        "photos": [
+          "https://picsum.photos/id/768/200/300.jpg",
+          "https://picsum.photos/id/768/200/300.jpg"
+        ],
+        "status": {
+          "status": "In Progress",
+          "subStatus": "In Progress",
+          "state": "In Progress"
+        },
+        "city": "oshodi",
+        "street": "270 Murtala Muhammed Way, Alagomeji. Yaba",
+        "lga": "lagos mainland",
+        "state": "Lagos",
+        "country": "Nigeria",
+        "reference": "VMN_dsmdms"
+      }
+    },
+    "223344": {
+      "status": "success",
+      "data": {
+        "id": 2,
+        "applicant": {
+          "firstname": "Amina",
+          "lastname": "Bello",
+          "phone": "08011111111",
+          "idType": "bvn",
+          "idNumber": "10000000002",
+          "middlename": "Rahmat",
+          "photo": "https://images.verifyme.ng/278783775/amina223344.jpg",
+          "gender": "Female",
+          "birthdate": "21/03/1992"
+        },
+        "business": {
+          "name": "Bello Agro Ventures",
+          "type": "Formal",
+          "rcNumber": "223344",
+          "isBusinessKnown": true,
+          "isBusinessOwnerKnown": true,
+          "ownerVisitsFrequently": true
+        },
+        "canContactPoc": true,
+        "createdAt": "",
+        "completedAt": "",
+        "lattitude": "6.524379",
+        "longitude": "3.379206",
+        "photos": [
+          "https://picsum.photos/id/102/200/300.jpg",
+          "https://picsum.photos/id/103/200/300.jpg"
+        ],
+        "status": {
+          "status": "In Progress",
+          "subStatus": "In Progress",
+          "state": "In Progress"
+        },
+        "city": "Ikeja",
+        "street": "15 Mobolaji Bank Anthony Way",
+        "lga": "Ikeja",
+        "state": "Lagos",
+        "country": "Nigeria",
+        "reference": "VMN_bello223344"
+      }
+    },
+    "778899": {
+      "status": "success",
+      "data": {
+        "id": 3,
+        "applicant": {
+          "firstname": "Chinedu",
+          "lastname": "Okafor",
+          "phone": "08022222222",
+          "idType": "bvn",
+          "idNumber": "10000000003",
+          "middlename": "Ugochukwu",
+          "photo": "https://images.verifyme.ng/278783775/chinedu778899.jpg",
+          "gender": "Male",
+          "birthdate": "09/07/1989"
+        },
+        "business": {
+          "name": "Okafor Logistics Limited",
+          "type": "Formal",
+          "rcNumber": "778899",
+          "isBusinessKnown": true,
+          "isBusinessOwnerKnown": true,
+          "ownerVisitsFrequently": false
+        },
+        "canContactPoc": false,
+        "createdAt": "",
+        "completedAt": "",
+        "lattitude": "7.377535",
+        "longitude": "3.947040",
+        "photos": [
+          "https://picsum.photos/id/110/200/300.jpg",
+          "https://picsum.photos/id/111/200/300.jpg"
+        ],
+        "status": {
+          "status": "In Progress",
+          "subStatus": "In Progress",
+          "state": "In Progress"
+        },
+        "city": "Ibadan",
+        "street": "23 Ring Road",
+        "lga": "Ibadan South-West",
+        "state": "Oyo",
+        "country": "Nigeria",
+        "reference": "VMN_okafor778899"
+      }
+    }
+  }
+}

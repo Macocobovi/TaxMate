@@ -1,0 +1,67 @@
+{
+  "project": "taxmate",
+  "default_mode": "implementation",
+  "paths": {
+    "frontend": "frontend",
+    "backend": "backend",
+    "contract": "proxy-contract/contracts/Taxmate.sol",
+    "context": "llm.md",
+    "skill": "ops/skills/taxmate-dev/SKILL.md"
+  },
+  "commands": {
+    "backend_dev": "npm run dev --workspace backend",
+    "frontend_dev": "npm run dev --workspace frontend",
+    "backend_typecheck": "npm run typecheck --workspace backend",
+    "backend_lint": "npm run lint --workspace backend",
+    "frontend_lint": "npm run lint --workspace frontend"
+  },
+  "integration_endpoints": {
+    "verifyme": "https://vapi.verifyme.ng",
+    "monnify": "https://api.monnify.com",
+    "circle": "https://api.circle.com",
+    "pinata": "https://api.pinata.cloud",
+    "resend": "https://api.resend.com"
+  },
+  "env_var_contract": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "JWT_SECRET",
+    "JWT_REFRESH_SECRET",
+    "VERIFYME_API_KEY",
+    "MONNIFY_API_KEY",
+    "MONNIFY_SECRET_KEY",
+    "MONNIFY_CONTRACT_CODE",
+    "CIRCLE_API_KEY",
+    "CIRCLE_ENTITY_SECRET",
+    "CIRCLE_ENTITY_SECRET_CIPHERTEXT",
+    "CIRCLE_WALLET_SET_ID",
+    "CIRCLE_ADMIN_WALLET_ID",
+    "PINATA_JWT",
+    "PINATA_GATEWAY_URL",
+    "RESEND_API_KEY",
+    "RESEND_FROM_EMAIL",
+    "TAXMATE_CONTRACT_ADDRESS",
+    "BASE_RPC_URL"
+  ],
+  "context_update_rules": {
+    "required_sections": [
+      "Current Snapshot",
+      "Completed",
+      "In Progress",
+      "Next Tasks",
+      "Blockers",
+      "Commands"
+    ],
+    "update_after": [
+      "new module scaffold",
+      "route additions",
+      "schema changes",
+      "integration wiring"
+    ]
+  },
+  "done_criteria": [
+    "typecheck passes for backend",
+    "lint passes for frontend and backend",
+    "routes and module structure match spec"
+  ]
+}

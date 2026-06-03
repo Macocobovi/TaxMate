@@ -1,0 +1,5 @@
+.circle/
+.env
+dist/
+
+../node_modules/

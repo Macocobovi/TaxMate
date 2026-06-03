@@ -2,6 +2,12 @@
   "name": "proxy-contract",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:base-sepolia": "hardhat run scripts/deploy-taxmate.ts --network baseSepolia",
+    "deploy:base-mainnet": "hardhat run scripts/deploy-taxmate.ts --network baseMainnet"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.3",
     "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.0",

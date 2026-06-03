@@ -1,0 +1,16 @@
+{
+  "name": "taxmate-workspace",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "proxy-contract"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "lint:frontend": "npm run lint --workspace frontend",
+    "lint:backend": "npm run lint --workspace backend",
+    "typecheck:backend": "npm run typecheck --workspace backend"
+  }
+}
