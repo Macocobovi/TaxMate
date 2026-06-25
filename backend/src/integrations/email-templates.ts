@@ -2,6 +2,10 @@
 // Keep these in sync with the frontend brand tokens in
 // frontend/src/app/globals.css (primary #04763b, secondary #07552f, accent #e8f5ec).
 
+import { env } from "../config/env.js";
+
+const LOGO_URL = `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/taxmate-logo.png`;
+
 const BRAND = {
   primary: "#04763b",
   secondary: "#07552f",
@@ -51,7 +55,7 @@ export function otpEmail(otp: string): EmailContent {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border:1px solid ${BRAND.border};border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
             <tr>
               <td style="background-color:${BRAND.primary};padding:24px 32px;">
-                <span style="display:inline-block;width:32px;height:32px;line-height:32px;text-align:center;background-color:#ffffff;color:${BRAND.primary};border-radius:50%;font-weight:800;font-size:16px;vertical-align:middle;">T</span>
+                <img src="${LOGO_URL}" alt="Taxmate" width="34" height="34" style="width:34px;height:34px;border-radius:50%;vertical-align:middle;background-color:#ffffff;" />
                 <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.3px;vertical-align:middle;padding-left:10px;">Taxmate</span>
               </td>
             </tr>

@@ -7,6 +7,7 @@ import { businessProfiles, individualProfiles, invoices, taxItemsCache, users } 
 import { monnifyClient } from "../../integrations/monnify.js";
 import { onChainPaymentQueue } from "../../queues/index.js";
 import { ensureTaxItemOnChain } from "../../services/onchain-tax-item-service.js";
+import { generateReceiptPdf } from "../../services/receipt-pdf.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { ApiError } from "../../utils/errors.js";
 import { env } from "../../config/env.js";
@@ -392,7 +393,7 @@ paymentsRouter.get("/receipt/:invoiceId", requireAuth, async (req, res, next) =>
   }
 });
 
-// Downloadable receipt file (works regardless of IPFS pin state).
+// Downloadable PDF receipt (works regardless of IPFS pin state).
 paymentsRouter.get("/receipt/:invoiceId/download", requireAuth, async (req, res, next) => {
   try {
     const [invoice] = await db.select().from(invoices).where(eq(invoices.id, String(req.params.invoiceId))).limit(1);
@@ -401,10 +402,23 @@ paymentsRouter.get("/receipt/:invoiceId/download", requireAuth, async (req, res,
     }
 
     const receipt = await buildReceipt(invoice);
-    const filename = `taxmate-receipt-${receipt.paymentReference ?? invoice.id}.json`;
-    res.setHeader("Content-Type", "application/json");
+    const pdf = await generateReceiptPdf({
+      invoiceId: receipt.invoiceId,
+      status: receipt.status,
+      tin: receipt.tin,
+      taxItem: receipt.taxItem,
+      category: receipt.category,
+      amount: receipt.amount,
+      paymentReference: receipt.paymentReference,
+      paidAt: receipt.paidAt,
+      confirmedAt: receipt.confirmedAt,
+      blockchain: receipt.blockchain
+    });
+
+    const filename = `taxmate-receipt-${receipt.paymentReference ?? invoice.id}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.status(200).send(JSON.stringify(receipt, null, 2));
+    res.status(200).send(pdf);
   } catch (error) {
     next(error);
   }
