@@ -9,6 +9,18 @@ import { onChainPaymentQueue } from "../../queues/index.js";
 import { ensureTaxItemOnChain } from "../../services/onchain-tax-item-service.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { ApiError } from "../../utils/errors.js";
+import { env } from "../../config/env.js";
+
+const EXPLORER_TX_URL = `${process.env.EXPLORER_URL ?? "https://sepolia.basescan.org"}/tx/`;
+
+// A real IPFS pin (vs the dev stub CID used when Pinata is unavailable).
+function isRealCid(ipfsHash: string | null): ipfsHash is string {
+  return Boolean(ipfsHash) && !ipfsHash!.startsWith("stub-");
+}
+
+function ipfsGatewayUrl(ipfsHash: string): string {
+  return `${env.PINATA_GATEWAY_URL.replace(/\/$/, "")}/${ipfsHash}`;
+}
 
 export const paymentsRouter = Router();
 
@@ -76,7 +88,10 @@ async function serializeInvoice(invoice: typeof invoices.$inferSelect) {
     monnifyTxRef: invoice.monnifyTxRef,
     status: invoice.status,
     ipfsHash: invoice.ipfsHash,
-    receiptUrl: invoice.ipfsHash ? `https://gateway.pinata.cloud/ipfs/${invoice.ipfsHash}` : null,
+    // Only expose a gateway URL for a real pin; a stub CID won't resolve.
+    ipfsPinned: isRealCid(invoice.ipfsHash),
+    receiptUrl: isRealCid(invoice.ipfsHash) ? ipfsGatewayUrl(invoice.ipfsHash) : null,
+    receiptDownloadUrl: `/payments/receipt/${invoice.id}/download`,
     txHash: invoice.txHash,
     onChainRecordId: invoice.onChainRecordId,
     expiresAt: invoice.expiresAt.toISOString(),
@@ -328,6 +343,38 @@ paymentsRouter.post("/invoice/:id/verify", requireAuth, async (req, res, next) =
   }
 });
 
+// Canonical receipt document — always available (built from DB), independent of
+// whether the IPFS pin succeeded.
+async function buildReceipt(invoice: typeof invoices.$inferSelect) {
+  const [taxItem] = await db
+    .select()
+    .from(taxItemsCache)
+    .where(eq(taxItemsCache.onChainItemId, invoice.onChainItemId))
+    .limit(1);
+
+  return {
+    document: "Taxmate Tax Payment Receipt",
+    invoiceId: invoice.id,
+    status: invoice.status,
+    tin: invoice.tin,
+    taxItem: taxItem?.name ?? `Tax item #${invoice.onChainItemId}`,
+    category: taxItem?.category ?? null,
+    amount: `₦${amountNumber(invoice.amount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`,
+    paymentReference: invoice.monnifyTxRef ?? invoice.monnifyRef,
+    paidAt: invoice.paidAt?.toISOString() ?? null,
+    confirmedAt: invoice.confirmedAt?.toISOString() ?? null,
+    blockchain: {
+      network: "Base Sepolia",
+      contract: env.TAXMATE_CONTRACT_ADDRESS ?? null,
+      txHash: invoice.txHash,
+      explorerUrl: invoice.txHash ? `${EXPLORER_TX_URL}${invoice.txHash}` : null
+    },
+    ipfs: isRealCid(invoice.ipfsHash)
+      ? { cid: invoice.ipfsHash, gatewayUrl: ipfsGatewayUrl(invoice.ipfsHash) }
+      : { cid: null, gatewayUrl: null, note: "IPFS receipt not pinned (gateway unavailable)" }
+  };
+}
+
 paymentsRouter.get("/receipt/:invoiceId", requireAuth, async (req, res, next) => {
   try {
     const [invoice] = await db.select().from(invoices).where(eq(invoices.id, String(req.params.invoiceId))).limit(1);
@@ -336,12 +383,28 @@ paymentsRouter.get("/receipt/:invoiceId", requireAuth, async (req, res, next) =>
     }
 
     res.status(200).json({
-      invoiceId: invoice.id,
-      status: invoice.status,
-      receiptUrl: invoice.ipfsHash ? `https://gateway.pinata.cloud/ipfs/${invoice.ipfsHash}` : null,
-      ipfsHash: invoice.ipfsHash,
-      txHash: invoice.txHash
+      ...(await buildReceipt(invoice)),
+      ipfsPinned: isRealCid(invoice.ipfsHash),
+      receiptUrl: isRealCid(invoice.ipfsHash) ? ipfsGatewayUrl(invoice.ipfsHash) : null
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Downloadable receipt file (works regardless of IPFS pin state).
+paymentsRouter.get("/receipt/:invoiceId/download", requireAuth, async (req, res, next) => {
+  try {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, String(req.params.invoiceId))).limit(1);
+    if (!invoice || invoice.userId !== req.authUser!.id) {
+      throw new ApiError(404, "Invoice not found");
+    }
+
+    const receipt = await buildReceipt(invoice);
+    const filename = `taxmate-receipt-${receipt.paymentReference ?? invoice.id}.json`;
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.status(200).send(JSON.stringify(receipt, null, 2));
   } catch (error) {
     next(error);
   }
