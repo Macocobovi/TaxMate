@@ -30,8 +30,19 @@ const invoiceSchema = z.object({
   amount: z.coerce.number().positive()
 });
 
+// Monnify sends { eventType, eventData: { paymentReference, paymentStatus, ... } }.
+// The flat fields are kept for manual/local simulation.
 const webhookSchema = z
   .object({
+    eventType: z.string().optional(),
+    eventData: z
+      .object({
+        paymentReference: z.string().optional(),
+        transactionReference: z.string().optional(),
+        paymentStatus: z.string().optional()
+      })
+      .passthrough()
+      .optional(),
     invoiceId: z.string().uuid().optional(),
     paymentReference: z.string().optional(),
     transactionReference: z.string().optional(),
@@ -273,18 +284,22 @@ paymentsRouter.post("/monnify/init", requireAuth, async (req, res, next) => {
 
 paymentsRouter.post("/monnify/webhook", async (req, res, next) => {
   try {
+    // Verify against the exact raw bytes Monnify signed (HMAC-SHA512, secret key).
     const signature = req.header("monnify-signature") ?? "";
-    const rawBody = JSON.stringify(req.body);
-    const valid = monnifyClient.verifyWebhookSignature(rawBody, signature);
-
-    if (!valid) {
+    const rawBody = req.rawBody?.toString("utf8") ?? JSON.stringify(req.body);
+    if (!monnifyClient.verifyWebhookSignature(rawBody, signature)) {
       res.status(401).json({ message: "Invalid signature" });
       return;
     }
 
     const payload = webhookSchema.parse(req.body);
-    const paymentReference = payload.paymentReference ?? payload.transactionReference;
-    const status = String(payload.status ?? "PAID").toUpperCase();
+    const eventData = payload.eventData ?? {};
+    const eventType = (payload.eventType ?? "").toUpperCase();
+    const paymentReference = eventData.paymentReference ?? eventData.transactionReference ?? payload.paymentReference ?? payload.transactionReference;
+    const paymentStatus = (eventData.paymentStatus ?? payload.status ?? "").toUpperCase();
+
+    const succeeded = paymentStatus === "PAID" || paymentStatus === "OVERPAID" || eventType === "SUCCESSFUL_TRANSACTION";
+    const failed = paymentStatus.includes("FAIL") || eventType.includes("FAILED") || eventType.includes("REVERSED");
 
     const [invoice] = payload.invoiceId
       ? await db.select().from(invoices).where(eq(invoices.id, payload.invoiceId)).limit(1)
@@ -292,21 +307,19 @@ paymentsRouter.post("/monnify/webhook", async (req, res, next) => {
         ? await db.select().from(invoices).where(eq(invoices.monnifyRef, paymentReference)).limit(1)
         : [];
 
+    // Always acknowledge with 200 so Monnify doesn't retry events we can't act on.
     if (!invoice) {
-      throw new ApiError(404, "Invoice not found for webhook");
+      res.status(200).json({ received: true });
+      return;
     }
 
-    const paymentRefValue = paymentReference ?? invoice.monnifyRef;
-    const failed = status.includes("FAIL");
-
-    let updated = invoice;
-    if (failed) {
-      [updated] = await db.update(invoices).set({ status: "FAILED" }).where(eq(invoices.id, invoice.id)).returning();
-    } else {
-      updated = await confirmInvoicePayment(invoice.id, paymentRefValue);
+    if (succeeded) {
+      await confirmInvoicePayment(invoice.id, paymentReference ?? invoice.monnifyRef);
+    } else if (failed && invoice.status === "PENDING") {
+      await db.update(invoices).set({ status: "FAILED" }).where(eq(invoices.id, invoice.id)).returning();
     }
 
-    res.status(202).json({ accepted: true, item: await serializeInvoice(updated) });
+    res.status(200).json({ received: true });
   } catch (error) {
     next(error);
   }

@@ -20,7 +20,15 @@ export const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.NEXT_PUBLIC_APP_URL, credentials: true }));
 app.use(cookieParser());
-app.use(express.json());
+app.use(
+  express.json({
+    // Keep the raw bytes so webhook signatures can be verified against the
+    // exact payload (re-stringifying the parsed JSON would not match).
+    verify: (req, _res, buf) => {
+      (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+    }
+  })
+);
 app.use(pinoHttp({ logger }));
 
 app.use(`${env.API_PREFIX}/health`, healthRouter);

@@ -10,6 +10,8 @@ export type AuthUser = {
 declare module "express-serve-static-core" {
   interface Request {
     authUser?: AuthUser;
+    // Raw request body, captured for webhook signature verification.
+    rawBody?: Buffer;
   }
 }
 
