@@ -1,7 +1,13 @@
-import { initiateDeveloperControlledWalletsClient } from "@circle-fin/developer-controlled-wallets";
 import { createHash, randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { env } from "../config/env.js";
 import { ApiError } from "../utils/errors.js";
+
+// Load the Circle SDK via createRequire (its CJS build): under tsx the package's
+// ESM build does not expose this named export reliably, depending on how
+// node_modules is hoisted.
+const require = createRequire(import.meta.url);
+const { initiateDeveloperControlledWalletsClient } = require("@circle-fin/developer-controlled-wallets") as typeof import("@circle-fin/developer-controlled-wallets");
 
 type ContractExecutionParams = {
   walletId: string;

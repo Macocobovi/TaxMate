@@ -6,7 +6,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy:base-sepolia": "hardhat run scripts/deploy-taxmate.ts --network baseSepolia",
-    "deploy:base-mainnet": "hardhat run scripts/deploy-taxmate.ts --network baseMainnet"
+    "deploy:base-mainnet": "hardhat run scripts/deploy-taxmate.ts --network baseMainnet",
+    "verify:base-sepolia": "hardhat verify --network baseSepolia"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.3",

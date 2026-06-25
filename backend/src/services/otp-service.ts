@@ -4,6 +4,7 @@ import { otpCodes } from "../db/schema.js";
 import { generateOtp, sha256 } from "../utils/crypto.js";
 import { ApiError } from "../utils/errors.js";
 import { resendClient } from "../integrations/resend.js";
+import { otpEmail } from "../integrations/email-templates.js";
 import { env } from "../config/env.js";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -20,11 +21,8 @@ export class OtpService {
         expiresAt: new Date(Date.now() + OTP_TTL_MS)
       });
 
-      await resendClient.sendEmail({
-        to: email,
-        subject: "Taxmate OTP",
-        html: `Your OTP is <b>${otp}</b>. It expires in 10 minutes.`
-      });
+      const { subject, html, text } = otpEmail(otp);
+      await resendClient.sendEmail({ to: email, subject, html, text });
 
       return env.NODE_ENV === "production" ? {} : { debugOtp: otp };
     } catch (error) {
