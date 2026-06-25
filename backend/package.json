@@ -15,7 +15,8 @@
     "circle:register-ciphertext": "tsx scripts/register-circle-ciphertext.ts",
     "circle:create-wallet-set-admin": "tsx scripts/create-circle-wallet-set-admin.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit push"
+    "db:migrate": "drizzle-kit push",
+    "admin:create-superadmin": "tsx scripts/create-superadmin.ts"
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^10.1.0",
