@@ -400,6 +400,7 @@ authRouter.get(
     const payload = result.raw as Record<string, unknown>;
     const data = (payload.data ?? payload) as Record<string, unknown>;
     const business = (data.business ?? data) as Record<string, unknown>;
+    const applicant = (data.applicant ?? {}) as Record<string, unknown>;
 
     res.status(200).json({
       jobId: job.id,
@@ -408,7 +409,17 @@ authRouter.get(
         result.status === "COMPLETED"
           ? {
               companyName: extractString(business, "name", "businessNameFound"),
-              rcNumber: extractString(business, "rcNumber")
+              rcNumber: extractString(business, "rcNumber"),
+              companyType: extractString(business, "type"),
+              // Address fields live on the top-level verification data.
+              street: extractString(data, "street", "address"),
+              city: extractString(data, "city"),
+              lga: extractString(data, "lga"),
+              state: extractString(data, "state"),
+              country: extractString(data, "country"),
+              applicantFirstname: extractString(applicant, "firstname"),
+              applicantLastname: extractString(applicant, "lastname"),
+              applicantPhone: extractString(applicant, "phone")
             }
           : undefined
     });
