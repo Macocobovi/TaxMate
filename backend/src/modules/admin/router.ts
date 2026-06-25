@@ -13,6 +13,9 @@ import {
 } from "../../db/schema.js";
 import { requireRole } from "../../middleware/roles.js";
 import { ApiError } from "../../utils/errors.js";
+import { env } from "../../config/env.js";
+import { onChainPaymentQueue } from "../../queues/index.js";
+import { createTaxItemOnChain, setTaxItemActiveOnChain } from "../../services/onchain-tax-item-service.js";
 
 export const adminRouter = Router();
 
@@ -24,6 +27,27 @@ const createAdminSchema = z.object({
   password: z.string().min(8),
   role: z.enum(["ADMIN", "SUPER_ADMIN"]).default("ADMIN")
 });
+const taxItemSchema = z.object({
+  name: z.string().min(2),
+  description: z.string().min(2),
+  category: z.enum(["WHT", "PAYE", "VAT", "INCOME_TAX", "CORPORATE_TAX"]),
+  rateBasisPoints: z.coerce.number().int().min(0)
+});
+const toggleSchema = z.object({ isActive: z.boolean() });
+
+function serializeTaxItem(row: typeof taxItemsCache.$inferSelect) {
+  return {
+    id: row.id,
+    onChainItemId: row.onChainItemId,
+    name: row.name,
+    description: row.description,
+    category: row.category,
+    rateBasisPoints: row.rateBasisPoints,
+    rateLabel: `${(row.rateBasisPoints / 100).toFixed(2)}%`,
+    isActive: row.isActive,
+    lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null
+  };
+}
 
 function amountNumber(value: string): number {
   return Number.parseFloat(value);
@@ -129,10 +153,121 @@ adminRouter.patch("/users/:id/status", requireRole(["SUPER_ADMIN"]), async (req,
   }
 });
 
-adminRouter.get("/payments", async (_req, res, next) => {
+adminRouter.get("/payments", async (req, res, next) => {
   try {
-    const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+    const status = typeof req.query.status === "string" ? req.query.status.toUpperCase() : undefined;
+    const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+
+    let rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+    if (status) rows = rows.filter((row) => row.status === status);
+    if (userId) rows = rows.filter((row) => row.userId === userId);
+
     res.status(200).json({ items: await Promise.all(rows.map(serializeInvoice)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Re-queue a paid invoice whose on-chain recording failed/stalled.
+adminRouter.post("/payments/:id/retry-onchain", async (req, res, next) => {
+  try {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, String(req.params.id))).limit(1);
+    if (!invoice) {
+      throw new ApiError(404, "Invoice not found");
+    }
+    if (invoice.status !== "PAID") {
+      throw new ApiError(409, `Invoice is ${invoice.status.toLowerCase()}, not awaiting on-chain recording`);
+    }
+
+    const jobId = `record-${invoice.id}`;
+    await onChainPaymentQueue.remove(jobId).catch(() => undefined);
+    await onChainPaymentQueue.add(
+      "record-tax-payment",
+      { invoiceId: invoice.id },
+      { jobId, attempts: 5, backoff: { type: "exponential", delay: 5000 }, removeOnComplete: true, removeOnFail: false }
+    );
+
+    await audit(req.authUser!.id, "PAYMENT_ONCHAIN_RETRY", "INVOICE", invoice.id);
+    res.status(202).json({ requeued: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/tax-items", async (_req, res, next) => {
+  try {
+    const rows = await db.select().from(taxItemsCache).orderBy(desc(taxItemsCache.onChainItemId));
+    res.status(200).json({ items: rows.map(serializeTaxItem) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/tax-items", async (req, res, next) => {
+  try {
+    const payload = taxItemSchema.parse(req.body);
+    const { onChainItemId, txHash } = await createTaxItemOnChain(payload);
+
+    const [created] = await db
+      .insert(taxItemsCache)
+      .values({
+        onChainItemId,
+        name: payload.name,
+        description: payload.description,
+        category: payload.category,
+        rateBasisPoints: payload.rateBasisPoints,
+        isActive: true,
+        createdAtChain: new Date(),
+        lastSyncedAt: new Date()
+      })
+      .returning();
+
+    await audit(req.authUser!.id, "TAX_ITEM_CREATED", "TAX_ITEM", String(onChainItemId), { name: payload.name, txHash });
+    res.status(201).json({ item: serializeTaxItem(created) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.patch("/tax-items/:id", async (req, res, next) => {
+  try {
+    const { isActive } = toggleSchema.parse(req.body);
+    const onChainItemId = Number(req.params.id);
+    const [existing] = await db.select().from(taxItemsCache).where(eq(taxItemsCache.onChainItemId, onChainItemId)).limit(1);
+    if (!existing) {
+      throw new ApiError(404, "Tax item not found");
+    }
+
+    const { txHash } = await setTaxItemActiveOnChain(onChainItemId, isActive);
+    const [updated] = await db
+      .update(taxItemsCache)
+      .set({ isActive, lastSyncedAt: new Date() })
+      .where(eq(taxItemsCache.onChainItemId, onChainItemId))
+      .returning();
+
+    await audit(req.authUser!.id, "TAX_ITEM_UPDATED", "TAX_ITEM", String(onChainItemId), { isActive, txHash });
+    res.status(200).json({ item: serializeTaxItem(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/system", requireRole(["SUPER_ADMIN"]), async (_req, res, next) => {
+  try {
+    const taxItems = await db.select().from(taxItemsCache);
+    res.status(200).json({
+      contractAddress: env.TAXMATE_CONTRACT_ADDRESS ?? null,
+      network: env.BASE_RPC_URL ? "Base Sepolia" : null,
+      adminWalletConfigured: Boolean(env.CIRCLE_ADMIN_WALLET_ID),
+      taxItemCount: taxItems.length,
+      integrations: {
+        monnify: Boolean(env.MONNIFY_API_KEY && env.MONNIFY_SECRET_KEY && env.MONNIFY_CONTRACT_CODE),
+        circle: Boolean(env.CIRCLE_API_KEY && env.CIRCLE_ENTITY_SECRET),
+        pinata: Boolean(env.PINATA_JWT),
+        resend: Boolean(env.RESEND_API_KEY),
+        verifyme: Boolean(env.VERIFYME_API_KEY)
+      }
+    });
   } catch (error) {
     next(error);
   }

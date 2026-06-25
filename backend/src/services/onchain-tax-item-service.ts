@@ -1,4 +1,4 @@
-import { asc, eq, lte } from "drizzle-orm";
+import { asc, eq, lte, sql } from "drizzle-orm";
 import { circleExecutionMap } from "../blockchain/taxmateContract.js";
 import { taxmateReader } from "../blockchain/reader.js";
 import { env } from "../config/env.js";
@@ -102,4 +102,51 @@ export async function ensureTaxItemOnChain(targetOnChainItemId: number): Promise
   }
 
   return effectiveId;
+}
+
+export interface NewTaxItemInput {
+  name: string;
+  description: string;
+  category: string;
+  rateBasisPoints: number;
+}
+
+// Creates a new tax item on-chain (createTaxItem) and returns the contract-assigned
+// id. In dev without on-chain writes, assigns the next local id so admins can still
+// manage the catalogue. The caller persists the cache row.
+export async function createTaxItemOnChain(input: NewTaxItemInput): Promise<{ onChainItemId: number; txHash: string | null }> {
+  const category = CATEGORY_TO_ENUM[input.category];
+  if (category === undefined) {
+    throw new Error(`Unsupported tax category: ${input.category}`);
+  }
+
+  if (!onChainWritesEnabled()) {
+    const [row] = await db
+      .select({ value: sql<number>`coalesce(max(${taxItemsCache.onChainItemId}), 0)` })
+      .from(taxItemsCache);
+    return { onChainItemId: Number(row?.value ?? 0) + 1, txHash: null };
+  }
+
+  const execution = await circleClient.executeContract({
+    walletId: env.CIRCLE_ADMIN_WALLET_ID!,
+    abiFunctionSignature: circleExecutionMap.taxItemCreate, // createTaxItem(string,string,uint8,uint256)
+    abiParameters: [input.name, input.description, String(category), String(input.rateBasisPoints)]
+  });
+  const txHash = await pollTxHash(execution.transactionId);
+  const onChainItemId = await taxmateReader.readCreatedItemId(txHash);
+  return { onChainItemId, txHash };
+}
+
+// Activates/deactivates a tax item on-chain (updateTaxItem). No-op tx in dev.
+export async function setTaxItemActiveOnChain(onChainItemId: number, isActive: boolean): Promise<{ txHash: string | null }> {
+  if (!onChainWritesEnabled()) {
+    return { txHash: null };
+  }
+  const execution = await circleClient.executeContract({
+    walletId: env.CIRCLE_ADMIN_WALLET_ID!,
+    abiFunctionSignature: circleExecutionMap.taxItemToggle, // updateTaxItem(uint256,bool)
+    abiParameters: [String(onChainItemId), isActive]
+  });
+  const txHash = await pollTxHash(execution.transactionId);
+  return { txHash };
 }
