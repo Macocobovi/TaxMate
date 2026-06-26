@@ -6,7 +6,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   API_PREFIX: z.string().default("/api"),
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1),
+  // Optional: on-chain recording now runs in-process, so Redis is no longer required.
+  REDIS_URL: z.string().optional(),
   JWT_SECRET: z.string().min(1),
   JWT_REFRESH_SECRET: z.string().min(1),
   NEXT_PUBLIC_APP_URL: z.string().url(),

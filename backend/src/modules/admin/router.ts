@@ -14,7 +14,7 @@ import {
 import { requireRole } from "../../middleware/roles.js";
 import { ApiError } from "../../utils/errors.js";
 import { env } from "../../config/env.js";
-import { onChainPaymentQueue } from "../../queues/index.js";
+import { triggerOnChainRecording } from "../../services/payment-recorder.js";
 import { createTaxItemOnChain, setTaxItemActiveOnChain } from "../../services/onchain-tax-item-service.js";
 
 export const adminRouter = Router();
@@ -168,7 +168,7 @@ adminRouter.get("/payments", async (req, res, next) => {
   }
 });
 
-// Re-queue a paid invoice whose on-chain recording failed/stalled.
+// Re-drive a paid invoice whose on-chain recording failed/stalled.
 adminRouter.post("/payments/:id/retry-onchain", async (req, res, next) => {
   try {
     const [invoice] = await db.select().from(invoices).where(eq(invoices.id, String(req.params.id))).limit(1);
@@ -179,13 +179,7 @@ adminRouter.post("/payments/:id/retry-onchain", async (req, res, next) => {
       throw new ApiError(409, `Invoice is ${invoice.status.toLowerCase()}, not awaiting on-chain recording`);
     }
 
-    const jobId = `record-${invoice.id}`;
-    await onChainPaymentQueue.remove(jobId).catch(() => undefined);
-    await onChainPaymentQueue.add(
-      "record-tax-payment",
-      { invoiceId: invoice.id },
-      { jobId, attempts: 5, backoff: { type: "exponential", delay: 5000 }, removeOnComplete: true, removeOnFail: false }
-    );
+    triggerOnChainRecording(invoice.id);
 
     await audit(req.authUser!.id, "PAYMENT_ONCHAIN_RETRY", "INVOICE", invoice.id);
     res.status(202).json({ requeued: true });

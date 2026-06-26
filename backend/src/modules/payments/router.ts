@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "../../db/client.js";
 import { businessProfiles, individualProfiles, invoices, taxItemsCache, users } from "../../db/schema.js";
 import { monnifyClient } from "../../integrations/monnify.js";
-import { onChainPaymentQueue } from "../../queues/index.js";
+import { triggerOnChainRecording } from "../../services/payment-recorder.js";
 import { ensureTaxItemOnChain } from "../../services/onchain-tax-item-service.js";
 import { generateReceiptPdf } from "../../services/receipt-pdf.js";
 import { requireAuth } from "../../middleware/auth.js";
@@ -141,17 +141,9 @@ async function confirmInvoicePayment(
     await db.update(individualProfiles).set({ lastPaymentDate: paidAt }).where(eq(individualProfiles.userId, user.id));
   }
 
-  await onChainPaymentQueue.add(
-    "record-tax-payment",
-    { invoiceId: claimed.id },
-    {
-      jobId: `record-${claimed.id}`,
-      attempts: 5,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: false
-    }
-  );
+  // Record on-chain in-process (fire-and-forget, idempotent). Re-driven by the
+  // polled /verify endpoint and the admin retry action if it doesn't complete.
+  triggerOnChainRecording(claimed.id);
 
   return claimed;
 }
@@ -337,6 +329,10 @@ paymentsRouter.post("/invoice/:id/verify", requireAuth, async (req, res, next) =
 
     // Already settled (or being recorded on-chain) — no need to re-query Monnify.
     if (invoice.status !== "PENDING") {
+      // Re-drive on-chain recording if the payment is in but not yet recorded.
+      if (invoice.status === "PAID" && !invoice.txHash) {
+        triggerOnChainRecording(invoice.id);
+      }
       res.status(200).json({ item: await serializeInvoice(invoice) });
       return;
     }

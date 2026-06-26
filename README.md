@@ -18,8 +18,9 @@ The deployed contract on **Base Sepolia** (chainId 84532) is `0x52D3c0E7AB127081
 
 - **Node.js** 20.11+ (developed on 24)
 - **PostgreSQL** 14+ running locally
-- **Redis** 6+ running locally (required — BullMQ workers depend on it)
 - **npm** 10+
+
+> Redis is no longer required — on-chain recording runs in-process. `REDIS_URL` is optional/unused.
 - Accounts/keys for the integrations you want live: Monnify, Circle, Pinata, Resend, VerifyMe (all degrade to mock/stub mode in dev when unset — see [Integrations](#integrations)).
 
 ---
@@ -46,9 +47,6 @@ psql "postgresql://root@localhost:5432/postgres" -c 'CREATE DATABASE taxmate;'
 
 # 5. Apply the schema
 npm run db:migrate --workspace backend        # drizzle-kit push
-
-# 6. Start Redis (BullMQ requires it)
-redis-server --daemonize yes                  # or: brew services start redis
 ```
 
 ### Install notes (important)
