@@ -4,6 +4,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 import { circleExecutionMap } from "../../blockchain/taxmateContract.js";
 import { env } from "../../config/env.js";
+import { logger } from "../../config/logger.js";
 import { db } from "../../db/client.js";
 import { businessProfiles, businessVerificationJobs, individualProfiles, users } from "../../db/schema.js";
 import { circleClient } from "../../integrations/circle.js";
@@ -114,8 +115,10 @@ async function pollCircleTransaction(txId: string): Promise<{ txHash: string }> 
       return { txHash: tx.txHash ?? "" };
     }
 
-    if (state === "FAILED" || state === "REJECTED") {
-      throw new ApiError(502, "On-chain registration failed");
+    if (state === "FAILED" || state === "REJECTED" || state === "CANCELLED" || state === "DENIED") {
+      const detail = [tx.errorReason, tx.errorDetails].filter(Boolean).join(": ");
+      logger.error({ txId, state, errorReason: tx.errorReason, errorDetails: tx.errorDetails }, "On-chain registration transaction failed");
+      throw new ApiError(502, `On-chain registration failed (${state})${detail ? `: ${detail}` : ""}`);
     }
 
     await sleep(2000);

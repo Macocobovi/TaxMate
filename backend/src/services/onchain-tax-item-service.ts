@@ -35,7 +35,8 @@ async function pollTxHash(transactionId: string): Promise<string> {
       return tx.txHash ?? "";
     }
     if (["FAILED", "REJECTED", "CANCELLED", "DENIED"].includes(state)) {
-      throw new Error(`createTaxItem transaction ${transactionId} ended in state ${state}`);
+      const detail = [tx.errorReason, tx.errorDetails].filter(Boolean).join(": ");
+      throw new Error(`createTaxItem transaction ${transactionId} ended in state ${state}${detail ? ` (${detail})` : ""}`);
     }
     await sleep(2000);
   }

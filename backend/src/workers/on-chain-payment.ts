@@ -32,7 +32,8 @@ async function pollTxHash(transactionId: string): Promise<string> {
       return tx.txHash ?? "";
     }
     if (state === "FAILED" || state === "REJECTED" || state === "CANCELLED" || state === "DENIED") {
-      throw new Error(`Circle transaction ${transactionId} ended in state ${state}`);
+      const detail = [tx.errorReason, tx.errorDetails].filter(Boolean).join(": ");
+      throw new Error(`Circle transaction ${transactionId} ended in state ${state}${detail ? ` (${detail})` : ""}`);
     }
 
     await sleep(2000);

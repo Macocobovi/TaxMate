@@ -121,7 +121,9 @@ export class CircleClient {
     }
   }
 
-  async getTransaction(txId: string): Promise<{ state: string; txHash?: string; raw: unknown }> {
+  async getTransaction(
+    txId: string
+  ): Promise<{ state: string; txHash?: string; errorReason?: string; errorDetails?: string; raw: unknown }> {
     if (this.useMockMode()) {
       return {
         state: "CONFIRMED",
@@ -132,11 +134,16 @@ export class CircleClient {
 
     try {
       const response = await this.getRequiredClient().getTransaction({ id: txId });
-      const tx = response.data?.transaction;
+      // errorReason/errorDetails aren't in the SDK's static type but are returned on failures.
+      const tx = response.data?.transaction as
+        | { state?: string; txHash?: string; errorReason?: string; errorDetails?: string }
+        | undefined;
 
       return {
         state: tx?.state || "PENDING",
         txHash: tx?.txHash,
+        errorReason: tx?.errorReason,
+        errorDetails: tx?.errorDetails,
         raw: response
       };
     } catch (error) {
