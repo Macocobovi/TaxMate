@@ -67,7 +67,7 @@ async function getProfile(userId: string) {
   };
 }
 
-async function serializeInvoice(invoice: typeof invoices.$inferSelect) {
+async function serializeInvoice(invoice: typeof invoices.$inferSelect) { 
   const [taxItem] = await db
     .select()
     .from(taxItemsCache)
@@ -75,7 +75,7 @@ async function serializeInvoice(invoice: typeof invoices.$inferSelect) {
     .limit(1);
 
   return {
-    id: invoice.id,
+    id: invoice.id, 
     invoiceId: invoice.id,
     taxItemCacheId: invoice.taxItemCacheId,
     onChainItemId: invoice.onChainItemId,
@@ -94,8 +94,9 @@ async function serializeInvoice(invoice: typeof invoices.$inferSelect) {
     paidAt: invoice.paidAt?.toISOString() ?? null,
     confirmedAt: invoice.confirmedAt?.toISOString() ?? null,
     createdAt: invoice.createdAt.toISOString()
+   
   };
-}
+} 
 
 userRouter.get("/profile", async (req, res, next) => {
   try {

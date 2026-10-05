@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
+import { taxmateReader } from "../blockchain/reader.js";
+import { logger } from "../config/logger.js";
 import { db } from "../db/client.js";
 import { businessProfiles, individualProfiles } from "../db/schema.js";
 import { ApiError } from "../utils/errors.js";
@@ -24,6 +26,7 @@ export type TinAvailability = TinSeed & {
 };
 
 const RESERVATION_TTL_MS = 30 * 60 * 1000;
+const CHAIN_LOOKUP_TTL_MS = 60 * 1000;
 
 const mockData = JSON.parse(
   readFileSync(new URL("../mocks/tins.json", import.meta.url), "utf-8")
@@ -31,6 +34,10 @@ const mockData = JSON.parse(
 
 class TinService {
   private reservations = new Map<string, { type: TinType; email: string; expiresAt: number }>();
+  // The chain never releases a TIN, so a "taken" answer is cached forever; a "free" answer
+  // is only cached briefly, since another registration can claim it at any time.
+  private chainTaken = new Set<string>();
+  private chainFreeUntil = new Map<string, number>();
 
   private getPool(type: TinType): TinSeed[] {
     return type === "BUSINESS" ? mockData.business : mockData.individual;
@@ -45,6 +52,46 @@ class TinService {
     }
   }
 
+  // The database is only an index over chain state: rows are deleted when a registration
+  // fails partway (and are lost entirely on a database reset), while the contract keeps
+  // tinToAddress forever. Without this check the pool re-offers a TIN the contract has
+  // already claimed, and registerTaxpayer reverts with TIN_ALREADY_EXISTS.
+  private async isTakenOnChain(tin: string): Promise<boolean> {
+    if (this.chainTaken.has(tin)) {
+      return true;
+    }
+
+    if (!taxmateReader.isConfigured()) {
+      return false;
+    }
+
+    const freeUntil = this.chainFreeUntil.get(tin);
+    if (freeUntil && freeUntil > Date.now()) {
+      return false;
+    }
+
+    try {
+      const taken = await taxmateReader.tinIsTaken(tin);
+      if (taken) {
+        this.chainTaken.add(tin);
+        this.chainFreeUntil.delete(tin);
+      } else {
+        this.chainFreeUntil.set(tin, Date.now() + CHAIN_LOOKUP_TTL_MS);
+      }
+      return taken;
+    } catch (error) {
+      // A flaky RPC must not block registration: treat it as unknown and let the
+      // contract be the final arbiter.
+      logger.warn({ err: error, tin }, "On-chain TIN availability check failed");
+      return false;
+    }
+  }
+
+  private async getTakenOnChain(tins: string[]): Promise<Set<string>> {
+    const results = await Promise.all(tins.map(async (tin) => [tin, await this.isTakenOnChain(tin)] as const));
+    return new Set(results.filter(([, taken]) => taken).map(([tin]) => tin));
+  }
+
   private async getUsedTins(type: TinType): Promise<Set<string>> {
     if (type === "BUSINESS") {
       const rows = await db.select({ tin: businessProfiles.tin }).from(businessProfiles);
@@ -57,11 +104,16 @@ class TinService {
 
   async list(type: TinType): Promise<TinAvailability[]> {
     this.cleanupReservations();
-    const used = await this.getUsedTins(type);
+    const pool = this.getPool(type);
+    const [used, onChain] = await Promise.all([
+      this.getUsedTins(type),
+      this.getTakenOnChain(pool.map((record) => record.tin))
+    ]);
 
-    return this.getPool(type).map((record) => {
+    return pool.map((record) => {
       const reservation = this.reservations.get(record.tin);
-      const status = used.has(record.tin) ? "USED" : reservation ? "RESERVED" : "AVAILABLE";
+      const taken = used.has(record.tin) || onChain.has(record.tin);
+      const status = taken ? "USED" : reservation ? "RESERVED" : "AVAILABLE";
       return {
         ...record,
         type,
@@ -85,7 +137,7 @@ class TinService {
     }
 
     const used = await this.getUsedTins(type);
-    if (used.has(tin)) {
+    if (used.has(tin) || (await this.isTakenOnChain(tin))) {
       throw new ApiError(409, "TIN has already been used");
     }
 
@@ -121,6 +173,10 @@ class TinService {
       throw new ApiError(409, "TIN has already been used");
     }
 
+    if (await this.isTakenOnChain(tin)) {
+      throw new ApiError(409, "TIN is already registered on-chain. Pick another TIN.");
+    }
+
     const reservation = this.reservations.get(tin);
     if (reservation && reservation.email !== email) {
       throw new ApiError(409, "TIN is currently reserved by another registration");
@@ -140,7 +196,7 @@ class TinService {
 
   async isUsed(type: TinType, tin: string): Promise<boolean> {
     const used = await this.getUsedTins(type);
-    return used.has(tin);
+    return used.has(tin) || (await this.isTakenOnChain(tin));
   }
 
   async resolveProfileTypeForTin(tin: string): Promise<TinType | null> {

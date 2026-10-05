@@ -11,6 +11,7 @@
     "dev:backend": "npm run dev --workspace backend",
     "lint:frontend": "npm run lint --workspace frontend",
     "lint:backend": "npm run lint --workspace backend",
-    "typecheck:backend": "npm run typecheck --workspace backend"
+    "typecheck:backend": "npm run typecheck --workspace backend",
+    "admin:create-superadmin": "npm run admin:create-superadmin --workspace backend"
   }
 }

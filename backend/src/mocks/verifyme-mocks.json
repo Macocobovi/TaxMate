@@ -38,6 +38,149 @@
         "phone": "08122222222",
         "photo": "<base64 image>"
       }
+    },
+        "44190532760": {
+      "status": "success",
+      "data": {
+        "nin": "44190532760",
+        "firstname": "MANO",
+        "lastname": "UMARU",
+        "middlename": "DAZE",
+        "birthdate": "04-02-1991",
+        "gender": "Male",
+        "phone": "08122222222",
+        "photo": "<base64 image>"
+      }
+    },
+    "55208417392": {
+      "status": "success",
+      "data": {
+        "nin": "55208417392",
+        "firstname": "IBRAHIM",
+        "lastname": "SANI",
+        "middlename": "MUSA",
+        "birthdate": "18-07-1988",
+        "gender": "Male",
+        "phone": "08130000001",
+        "photo": "<base64 image>"
+      }
+    },
+    "61934278055": {
+      "status": "success",
+      "data": {
+        "nin": "61934278055",
+        "firstname": "NGOZI",
+        "lastname": "EZE",
+        "middlename": "ADAEZE",
+        "birthdate": "23-11-1993",
+        "gender": "Female",
+        "phone": "08130000002",
+        "photo": "<base64 image>"
+      }
+    },
+    "70418256931": {
+      "status": "success",
+      "data": {
+        "nin": "70418256931",
+        "firstname": "TUNDE",
+        "lastname": "ADEYEMI",
+        "middlename": "OLAWALE",
+        "birthdate": "05-03-1985",
+        "gender": "Male",
+        "phone": "08130000003",
+        "photo": "<base64 image>"
+      }
+    },
+    "38602715449": {
+      "status": "success",
+      "data": {
+        "nin": "38602715449",
+        "firstname": "FATIMA",
+        "lastname": "ABUBAKAR",
+        "middlename": "HALIMA",
+        "birthdate": "14-06-1997",
+        "gender": "Female",
+        "phone": "08130000004",
+        "photo": "<base64 image>"
+      }
+    },
+    "29175640823": {
+      "status": "success",
+      "data": {
+        "nin": "29175640823",
+        "firstname": "EMEKA",
+        "lastname": "NWACHUKWU",
+        "middlename": "OBINNA",
+        "birthdate": "30-01-1990",
+        "gender": "Male",
+        "phone": "08130000005",
+        "photo": "<base64 image>"
+      }
+    },
+    "84360192577": {
+      "status": "success",
+      "data": {
+        "nin": "84360192577",
+        "firstname": "BLESSING",
+        "lastname": "UDOH",
+        "middlename": "IMAOBONG",
+        "birthdate": "09-12-1994",
+        "gender": "Female",
+        "phone": "08130000006",
+        "photo": "<base64 image>"
+      }
+    },
+    "17549308266": {
+      "status": "success",
+      "data": {
+        "nin": "17549308266",
+        "firstname": "YUSUF",
+        "lastname": "LAWAL",
+        "middlename": "IDRIS",
+        "birthdate": "21-04-1986",
+        "gender": "Male",
+        "phone": "08130000007",
+        "photo": "<base64 image>"
+      }
+    },
+    "93825471604": {
+      "status": "success",
+      "data": {
+        "nin": "93825471604",
+        "firstname": "CHIOMA",
+        "lastname": "OKONKWO",
+        "middlename": "IFEOMA",
+        "birthdate": "02-08-1992",
+        "gender": "Female",
+        "phone": "08130000008",
+        "photo": "<base64 image>"
+      }
+    },
+    "46193805712": {
+      "status": "success",
+      "data": {
+        "nin": "46193805712",
+        "firstname": "SEGUN",
+        "lastname": "BAKARE",
+        "middlename": "OLUWASEUN",
+        "birthdate": "27-10-1989",
+        "gender": "Male",
+        "phone": "08130000009",
+        "photo": "<base64 image>"
+      }
+    },
+    "52738160495": {
+      "status": "success",
+      "data": {
+        "nin": "52738160495",
+        "firstname": "AISHA",
+        "lastname": "GARBA",
+        "middlename": "MARYAM",
+        "birthdate": "11-02-1996",
+        "gender": "Female",
+        "phone": "08130000010",
+        "photo": "<base64 image>"
+      }
     }
   },
   "businessByRc": {

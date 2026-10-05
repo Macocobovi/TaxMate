@@ -568,38 +568,139 @@ authRouter.get("/verify-email/:token", (req, res) => {
   res.status(200).json({ token: req.params.token, verified: true });
 });
 
+// authRouter.post(
+//  "/login",
+//   asyncHandler(async (req, res) => {
+//     const { email, password } = loginSchema.parse(req.body);
+
+//     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+//     console.log("USER", user)
+//     if (!user || !user.passwordHash) {
+//       throw new ApiError(401, "Invalid email or password");
+//     }
+
+//     const isValid = await bcrypt.compare(password, user.passwordHash);
+//     if (!isValid) {
+//       throw new ApiError(401, "Invalid email or password");
+//     }
+
+//     const accessToken = await tokenService.signAccessToken({
+//       sub: user.id,
+//       email: user.email,
+//       role: user.role,
+//       profileType: user.profileType ?? undefined
+//     });
+
+//     const refreshToken = await tokenService.signRefreshToken({
+//       sub: user.id,
+//       email: user.email,
+//       role: user.role,
+//       profileType: user.profileType ?? undefined
+//     });
+
+//     res.cookie("refreshToken", refreshToken, {
+//       ...refreshCookieOptions
+//     });
+
+//     res.status(200).json({
+//       accessToken,
+//       user: {
+//         id: user.id,
+//         email: user.email,
+//         role: user.role,
+//         profileType: user.profileType
+//       }
+//     });
+//   })
+// );
 authRouter.post(
   "/login",
   asyncHandler(async (req, res) => {
+    console.log("LOGIN: request received");
+
     const { email, password } = loginSchema.parse(req.body);
 
-    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    console.log("LOGIN: validation passed", { email });
+
+console.log("LOGIN: before database query");
+
+let user;
+
+try {
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  console.log("LOGIN: database query succeeded");
+  console.log("LOGIN: result:", result);
+
+  user = result[0];
+} catch (error) {
+  console.error("=================================");
+  console.error("DATABASE QUERY FAILED");
+  console.error("=================================");
+  console.error(error);
+
+  if (error instanceof Error) {
+    console.error("MESSAGE:", error.message);
+    console.error("STACK:", error.stack);
+  }
+
+  throw error;
+}
+
+console.log("LOGIN: user:", user);
+    console.log("LOGIN: user query completed", {
+      found: !!user,
+      userId: user?.id,
+      hasPasswordHash: !!user?.passwordHash,
+    });
+
     if (!user || !user.passwordHash) {
       throw new ApiError(401, "Invalid email or password");
     }
 
+    console.log("LOGIN: comparing password");
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
+
+    console.log("LOGIN: password comparison completed", {
+      isValid,
+    });
+
     if (!isValid) {
       throw new ApiError(401, "Invalid email or password");
     }
+
+    console.log("LOGIN: signing access token");
 
     const accessToken = await tokenService.signAccessToken({
       sub: user.id,
       email: user.email,
       role: user.role,
-      profileType: user.profileType ?? undefined
+      profileType: user.profileType ?? undefined,
     });
+
+    console.log("LOGIN: access token created");
+
+    console.log("LOGIN: signing refresh token");
 
     const refreshToken = await tokenService.signRefreshToken({
       sub: user.id,
       email: user.email,
       role: user.role,
-      profileType: user.profileType ?? undefined
+      profileType: user.profileType ?? undefined,
     });
 
+    console.log("LOGIN: refresh token created");
+
     res.cookie("refreshToken", refreshToken, {
-      ...refreshCookieOptions
+      ...refreshCookieOptions,
     });
+
+    console.log("LOGIN: response being sent");
 
     res.status(200).json({
       accessToken,
@@ -607,8 +708,8 @@ authRouter.post(
         id: user.id,
         email: user.email,
         role: user.role,
-        profileType: user.profileType
-      }
+        profileType: user.profileType,
+      },
     });
   })
 );

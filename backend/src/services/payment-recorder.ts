@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { circleExecutionMap } from "../blockchain/taxmateContract.js";
 import { env } from "../config/env.js";
@@ -47,23 +48,33 @@ export async function recordTaxPaymentOnChain(invoiceId: string): Promise<void> 
   }
 
   // Pin the receipt here (not at payment time) so the whole post-payment step is a
-  // single retryable unit — a transient Pinata failure doesn't strand the invoice.
+  // single retryable unit. If Pinata is unavailable, fall back to a deterministic
+  // content hash instead of stranding the payment — the on-chain record still gets a
+  // non-empty receipt reference, and the PDF receipt is generated server-side from the
+  // DB (not from IPFS), so downloads keep working. Set a valid PINATA_JWT for real
+  // IPFS-resolvable receipts.
   let receiptHash = invoice.ipfsHash;
   if (!receiptHash) {
-    const receipt = await pinataClient.pinReceipt(
-      Buffer.from(
-        JSON.stringify({
-          invoiceId: invoice.id,
-          tin: invoice.tin,
-          onChainItemId: invoice.onChainItemId,
-          amount: invoice.amount,
-          paymentRef: invoice.monnifyTxRef ?? invoice.monnifyRef,
-          paidAt: invoice.paidAt?.toISOString() ?? null
-        })
-      ),
-      invoice.id
+    const payload = Buffer.from(
+      JSON.stringify({
+        invoiceId: invoice.id,
+        tin: invoice.tin,
+        onChainItemId: invoice.onChainItemId,
+        amount: invoice.amount,
+        paymentRef: invoice.monnifyTxRef ?? invoice.monnifyRef,
+        paidAt: invoice.paidAt?.toISOString() ?? null
+      })
     );
-    receiptHash = receipt.cid;
+    try {
+      const receipt = await pinataClient.pinReceipt(payload, invoice.id);
+      receiptHash = receipt.cid;
+    } catch (error) {
+      receiptHash = `local-${createHash("sha256").update(payload).digest("hex").slice(0, 46)}`;
+      logger.warn(
+        { invoiceId: invoice.id, err: error instanceof Error ? error.message : String(error) },
+        "Pinata unavailable; recording on-chain with a local receipt hash"
+      );
+    }
     await db.update(invoices).set({ ipfsHash: receiptHash }).where(eq(invoices.id, invoice.id));
   }
 

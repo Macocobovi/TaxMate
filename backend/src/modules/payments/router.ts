@@ -16,7 +16,8 @@ const EXPLORER_TX_URL = `${process.env.EXPLORER_URL ?? "https://sepolia.basescan
 
 // A real IPFS pin (vs the dev stub CID used when Pinata is unavailable).
 function isRealCid(ipfsHash: string | null): ipfsHash is string {
-  return Boolean(ipfsHash) && !ipfsHash!.startsWith("stub-");
+  // "stub-" (dev fallback) and "local-" (Pinata-unavailable content hash) don't resolve on a gateway.
+  return Boolean(ipfsHash) && !ipfsHash!.startsWith("stub-") && !ipfsHash!.startsWith("local-");
 }
 
 function ipfsGatewayUrl(ipfsHash: string): string {

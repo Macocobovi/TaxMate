@@ -17,7 +17,8 @@
     "circle:create-wallet-set-admin": "tsx scripts/create-circle-wallet-set-admin.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
-    "admin:create-superadmin": "tsx scripts/create-superadmin.ts"
+    "admin:create-superadmin": "tsx scripts/create-superadmin.ts",
+    "benchmark": "node benchmark/api-benchmark.js"
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^10.1.0",
@@ -26,7 +27,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
-    "drizzle-orm": "^0.44.6",
+    "drizzle-orm": "^0.45.2",
     "ethers": "^6.17.0",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
@@ -47,7 +48,8 @@
     "@types/pdfkit": "^0.17.6",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
-    "drizzle-kit": "^0.31.4",
+    "autocannon": "^8.0.0",
+    "drizzle-kit": "^0.18.1",
     "eslint": "^9.36.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",

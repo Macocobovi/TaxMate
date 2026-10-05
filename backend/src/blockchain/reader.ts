@@ -2,12 +2,15 @@ import { Interface, JsonRpcProvider, type Log } from "ethers";
 import { env } from "../config/env.js";
 
 // Read-only view of the Taxmate contract (writes go through Circle). Used to check
-// whether a tax item exists on-chain and to read the id the contract assigned when
-// createTaxItem was executed.
+// whether a tax item exists on-chain, to read the id the contract assigned when
+// createTaxItem was executed, and to see whether a TIN is already claimed on-chain.
 const ABI = [
   "function taxItems(uint256) view returns (uint256 itemId, string name, string description, uint8 category, uint256 rate, bool isActive, uint256 createdAt, uint256 updatedAt)",
+  "function tinToAddress(string) view returns (address)",
   "event TaxItemCreated(uint256 indexed itemId, string name, uint8 category, uint256 rate)"
 ];
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const iface = new Interface(ABI);
 
@@ -41,6 +44,15 @@ export class TaxmateReader {
     const raw = await this.getProvider().call({ to: this.contractAddress(), data });
     const decoded = iface.decodeFunctionResult("taxItems", raw);
     return BigInt(decoded[0]) !== 0n;
+  }
+
+  // The contract keeps tinToAddress forever, so a TIN used by any past registration can
+  // never be registered again — even if its database row was rolled back or wiped.
+  async tinIsTaken(tin: string): Promise<boolean> {
+    const data = iface.encodeFunctionData("tinToAddress", [tin]);
+    const raw = await this.getProvider().call({ to: this.contractAddress(), data });
+    const [owner] = iface.decodeFunctionResult("tinToAddress", raw);
+    return String(owner).toLowerCase() !== ZERO_ADDRESS;
   }
 
   // Reads the itemId the contract assigned, from the TaxItemCreated event in the receipt.
