@@ -16,6 +16,7 @@ import { paymentsRouter } from "./modules/payments/router.js";
 import { adminRouter } from "./modules/admin/router.js";
 
 export const app = express();
+app.set("trust proxy", 1);
 
 // Allowed CORS origins: NEXT_PUBLIC_APP_URL plus any in CORS_ALLOWED_ORIGINS
 // (comma-separated). Trailing slashes are stripped so config like

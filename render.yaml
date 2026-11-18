@@ -1,0 +1,101 @@
+# Render Blueprint for TaxMate: PostgreSQL database + backend API + Next.js frontend.
+#
+# Put this file in the ROOT of your TaxMate GitHub repository (next to package.json),
+# commit and push it, then in Render choose New > Blueprint and select the repository.
+# Render asks for every value marked "sync: false" when it first creates the services.
+# Secrets are never stored in this file.
+#
+# Service names below become the web addresses (https://taxmate-api.onrender.com and
+# https://taxmate-web.onrender.com). If a name is already taken, Render adds a suffix;
+# in that case correct NEXT_PUBLIC_APP_URL and NEXT_PUBLIC_API_URL afterwards.
+
+databases:
+  - name: taxmate-db
+    plan: free                 # free databases expire 30 days after creation
+    region: frankfurt          # all three resources must be in the same region
+    databaseName: taxmate
+    user: taxmate
+
+services:
+  # ---------------------------------------------------------------- backend API
+  - type: web
+    name: taxmate-api
+    runtime: node
+    plan: free                 # one instance only: on-chain recording runs in-process
+    region: frankfurt
+    rootDir: backend
+    # --include=dev: TypeScript and drizzle-kit are devDependencies and are needed to build
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"            # change to the major version shown by `node -v` on your PC
+      - key: DATABASE_URL      # internal connection string of taxmate-db
+        fromDatabase:
+          name: taxmate-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: NEXT_PUBLIC_APP_URL   # frontend address, exact, no trailing slash: https://taxmate-web.onrender.com
+        sync: false
+
+      # Base Sepolia (public values)
+      - key: TAXMATE_CONTRACT_ADDRESS
+        value: "0x52D3c0E7AB127081FE8728Caf58c10Ed4a598d27"
+      - key: BASE_RPC_URL
+        value: https://sepolia.base.org   # or your Alchemy/Infura URL
+      - key: EXPLORER_URL
+        value: https://sepolia.basescan.org
+
+      # Monnify (sandbox)
+      - key: MONNIFY_BASE_URL
+        value: https://sandbox.monnify.com
+      - key: MONNIFY_API_KEY
+        sync: false
+      - key: MONNIFY_SECRET_KEY
+        sync: false
+      - key: MONNIFY_CONTRACT_CODE
+        sync: false
+
+      # Circle (wallets and on-chain writes)
+      - key: CIRCLE_API_KEY
+        sync: false
+      - key: CIRCLE_ENTITY_SECRET
+        sync: false
+      - key: CIRCLE_WALLET_SET_ID
+        sync: false
+      - key: CIRCLE_ADMIN_WALLET_ID
+        sync: false
+
+      # Pinata (IPFS receipts)
+      - key: PINATA_JWT
+        sync: false
+
+      # Resend (OTP and receipt emails)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: onboarding@resend.dev   # test sender: only delivers to your own Resend account email
+                                       # replace with an address on a domain verified in Resend
+
+      # VerifyMe: VERIFYME_API_KEY is deliberately not set, so identity checks run in mock mode.
+
+  # ---------------------------------------------------------------- frontend
+  - type: web
+    name: taxmate-web
+    runtime: node
+    plan: free
+    region: frankfurt
+    repo: https://github.com/Taxmateng/frontend   # the frontend lives in its own repository
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL       # backend address + /api: https://taxmate-api.onrender.com/api
+        sync: false                    # built into the frontend: redeploy after changing it
+      - key: NEXT_PUBLIC_EXPLORER_URL
+        value: https://sepolia.basescan.org

@@ -29,6 +29,20 @@ interface CachedToken {
   expiresAt: number;
 }
 
+// Monnify's firewall (Cloudflare) blocks init requests whose redirectUrl points at a
+// local address (e.g. http://localhost:3000), so local addresses are left out.
+function publicRedirectUrl(url: string): string | undefined {
+  try {
+    const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
+    const isLocal =
+      host === "localhost" || host.endsWith(".localhost") || host === "0.0.0.0" || host === "::1" ||
+      /^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+    return isLocal ? undefined : url;
+  } catch {
+    return undefined;
+  }
+}
+
 export class MonnifyClient {
   private readonly baseUrl = env.MONNIFY_BASE_URL;
   private cachedToken: CachedToken | null = null;
@@ -91,16 +105,18 @@ export class MonnifyClient {
         paymentDescription: input.paymentDescription ?? "Taxmate tax payment",
         currencyCode: input.currencyCode ?? "NGN",
         contractCode: env.MONNIFY_CONTRACT_CODE,
-        redirectUrl: input.redirectUrl ?? `${env.NEXT_PUBLIC_APP_URL}/dashboard/payments`,
+                redirectUrl: publicRedirectUrl(input.redirectUrl ?? `${env.NEXT_PUBLIC_APP_URL}/dashboard/payments`),
         paymentMethods: ["CARD", "ACCOUNT_TRANSFER"]
       })
     });
 
     if (!response.ok) {
-      const body = await response.text();
-      logger.error({ status: response.status, body }, "Monnify init transaction failed");
-      throw new Error("Could not start the Monnify payment. Please try again.");
-    }
+  const body = await response.text();
+  logger.error({ status: response.status, body }, "Monnify init transaction failed");
+  let reason = "";
+  try { reason = (JSON.parse(body) as { responseMessage?: string }).responseMessage ?? ""; } catch {}
+  throw new Error(reason ? `Could not start the Monnify payment: ${reason}` : "Could not start the Monnify payment. Please try again.");
+}
 
     const json = (await response.json()) as {
       responseBody?: { checkoutUrl?: string; transactionReference?: string; paymentReference?: string };
